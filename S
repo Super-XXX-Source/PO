@@ -1,0 +1,921 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/SpiderScriptRB/Jiji/refs/heads/main/GuiRedzV5Top-English.txt"))()
+
+local Window = Library:MakeWindow({
+Title = "Supra Hub Dead Rails ( Alpha ) 1.1V ‏",
+SubTitle = "Join Discord",
+SaveFolder = "Supra"
+})
+
+-- Initialize services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local lighting = game:GetService("Lighting")
+
+-- Variables
+local nobandagedelay = true
+local noclip = false
+local noclipConnection
+local fullBrightEnabled = false
+local trainESP = false
+local itemESP = false
+local mobESP = false
+local isAiming = false
+local fov = 100
+local autoCollect = false
+local autoHeal = false
+local healThreshold = 40
+
+-- Player Tab
+local Tab1 = Window:MakeTab({"Player", ""})
+
+Tab1:AddToggle({
+Name = "Unlock 3rd person",
+Default = false,
+Callback = function(Value)
+if Value then
+game.Players.LocalPlayer.CameraMode = Enum.CameraMode.Classic
+game.Players.LocalPlayer.CameraMaxZoomDistance = 100
+else
+game.Players.LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+end
+end
+})
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+Tab1:AddToggle({
+Name = "Noclip",
+Default = false,
+Callback = function(Value)
+noclip = Value
+if noclip then
+noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+for _, part in pairs(character:GetDescendants()) do
+if part:IsA("BasePart") then
+part.CanCollide = false
+end
+end
+end)
+else
+if noclipConnection then
+noclipConnection:Disconnect()
+noclipConnection = nil
+end
+end
+end
+})
+
+Tab1:AddToggle({
+Name = "Speed Boost",
+Default = false,
+Callback = function(Value)
+local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+if humanoid then
+humanoid.WalkSpeed = Value and 17 or 16
+end
+end
+})
+
+local function setFullBright(state)
+if state then
+lighting.Ambient = Color3.new(1, 1, 1)
+lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+lighting.Brightness = 5
+lighting.GlobalShadows = false
+else
+lighting.Ambient = Color3.new(0, 0, 0)
+lighting.OutdoorAmbient = Color3.new(0, 0, 0)
+lighting.Brightness = 1
+lighting.GlobalShadows = true
+end
+end
+
+Tab1:AddToggle({
+Name = "FullBright",
+Default = false,
+Callback = function(Value)
+fullBrightEnabled = Value
+setFullBright(fullBrightEnabled)
+end
+})
+
+-- ESP Tab
+local Tab2 = Window:MakeTab({"ESP", ""})
+
+local function toggleTrainESP()
+trainESP = not trainESP
+while trainESP do
+for _, v in pairs(workspace:GetDescendants()) do
+if v:IsA("Model") and v.Name:lower():find("train") then
+if not v:FindFirstChild("TrainHighlight") then
+local highlight = Instance.new("Highlight")
+highlight.Name = "TrainHighlight"
+highlight.Parent = v
+highlight.FillColor = Color3.fromRGB(255, 255, 255)
+highlight.OutlineColor = Color3.fromRGB(200, 200, 200)
+end
+end
+end
+task.wait(0.1)
+end
+
+if not trainESP then
+for _, v in pairs(workspace:GetDescendants()) do
+if v:IsA("Model") and v:FindFirstChild("TrainHighlight") then
+v.TrainHighlight:Destroy()
+end
+end
+end
+end
+
+Tab2:AddToggle({
+Name = "Train ESP",
+Default = false,
+Callback = function(Value)
+if Value then
+toggleTrainESP()
+else
+trainESP = false
+for _, v in pairs(workspace:GetDescendants()) do
+if v:IsA("Model") and v:FindFirstChild("TrainHighlight") then
+v.TrainHighlight:Destroy()
+end
+end
+end
+end
+})
+
+local runtimeItemsFolder = workspace:WaitForChild("RuntimeItems")
+
+local function addHighlightAndLabel(item)
+if not itemESP then return end
+
+if item:FindFirstChild("ItemHighlight") then return end
+
+local highlight = Instance.new("Highlight")
+highlight.Name = "ItemHighlight"
+highlight.FillColor = Color3.fromRGB(0, 255, 0)
+highlight.OutlineColor = Color3.fromRGB(0, 200, 0)
+highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+highlight.Parent = item
+
+local basePart = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+if not basePart then return end
+
+local billboard = Instance.new("BillboardGui")
+billboard.Name = "ItemLabel"
+billboard.Size = UDim2.new(4, 0, 1, 0)
+billboard.StudsOffset = Vector3.new(0, 3, 0)
+billboard.AlwaysOnTop = true
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.Text = item.Name
+label.TextColor3 = Color3.fromRGB(0, 255, 0)
+label.Font = Enum.Font.SourceSansBold
+label.TextSize = 20
+label.Parent = billboard
+billboard.Parent = basePart
+end
+
+local function removeHighlightAndLabel(item)
+if item:FindFirstChild("ItemHighlight") then item.ItemHighlight:Destroy() end
+if item:FindFirstChildWhichIsA("BasePart") and item:FindFirstChildWhichIsA("BasePart"):FindFirstChild("ItemLabel") then
+item:FindFirstChildWhichIsA("BasePart").ItemLabel:Destroy()
+end
+end
+
+local function toggleItemESP()
+itemESP = not itemESP
+if itemESP then
+for _, item in ipairs(runtimeItemsFolder:GetChildren()) do
+addHighlightAndLabel(item)
+end
+else
+for _, item in ipairs(runtimeItemsFolder:GetChildren()) do
+removeHighlightAndLabel(item)
+end
+end
+end
+
+runtimeItemsFolder.ChildAdded:Connect(function(item)
+if itemESP then addHighlightAndLabel(item) end
+end)
+
+Tab2:AddToggle({
+Name = "ESP Item",
+Default = false,
+Callback = toggleItemESP
+})
+
+local function applyHighlight(item)
+if mobESP and item:IsA("Humanoid") then
+local parent = item.Parent
+if parent and not game.Players:GetPlayerFromCharacter(parent) then
+if not parent:FindFirstChild("MobHighlight") then
+local highlight = Instance.new("Highlight")
+highlight.Name = "MobHighlight"
+highlight.Parent = parent
+highlight.FillColor = Color3.fromRGB(255, 0, 0)
+highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
+end
+end
+end
+end
+
+local function toggleMobESP()
+mobESP = not mobESP
+if mobESP then
+for _, item in pairs(workspace:GetDescendants()) do
+applyHighlight(item)
+end
+else
+for _, item in pairs(workspace:GetDescendants()) do
+if item:IsA("Model") and item:FindFirstChild("MobHighlight") then
+item.MobHighlight:Destroy()
+end
+end
+end
+end
+
+workspace.DescendantAdded:Connect(applyHighlight)
+
+Tab2:AddToggle({
+Name = "ESP Mob",
+Default = false,
+Callback = toggleMobESP
+})
+
+-- Aimbot Tab
+local Tab3 = Window:MakeTab({"Aimbot", ""})
+
+local Cam = workspace.CurrentCamera
+local Player = game:GetService("Players").LocalPlayer
+local validNPCs = {}
+local raycastParams = RaycastParams.new()
+raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+local FOVring = Drawing.new("Circle")
+FOVring.Visible = false
+FOVring.Thickness = 2
+FOVring.Filled = false
+FOVring.Radius = fov
+FOVring.Position = Cam.ViewportSize / 2
+
+local function rainbowColor()
+local time = tick()
+local r = math.sin(time * 2) * 127 + 128
+local g = math.sin(time * 2 + 2) * 127 + 128
+local b = math.sin(time * 2 + 4) * 127 + 128
+return Color3.fromRGB(r, g, b)
+end
+
+local function isNPC(obj)
+return obj:IsA("Model")
+and obj:FindFirstChild("Humanoid")
+and obj.Humanoid.Health > 0
+and obj:FindFirstChild("Head")
+and obj:FindFirstChild("HumanoidRootPart")
+and not game:GetService("Players"):GetPlayerFromCharacter(obj)
+end
+
+local function updateNPCs()
+local tempTable = {}
+for _, obj in ipairs(workspace:GetDescendants()) do
+if isNPC(obj) then tempTable[obj] = true end
+end
+for i = #validNPCs, 1, -1 do
+if not tempTable[validNPCs[i]] then table.remove(validNPCs, i) end
+end
+for obj in pairs(tempTable) do
+if not table.find(validNPCs, obj) then table.insert(validNPCs, obj) end
+end
+end
+
+local function handleDescendant(descendant)
+if isNPC(descendant) then
+table.insert(validNPCs, descendant)
+local humanoid = descendant:WaitForChild("Humanoid")
+humanoid.Destroying:Connect(function()
+for i = #validNPCs, 1, -1 do
+if validNPCs[i] == descendant then
+table.remove(validNPCs, i)
+break
+end
+end
+end)
+end
+end
+
+workspace.DescendantAdded:Connect(handleDescendant)
+
+local function updateDrawings()
+FOVring.Position = Cam.ViewportSize / 2
+FOVring.Radius = fov * (Cam.ViewportSize.Y / 1080)
+FOVring.Color = rainbowColor()
+end
+
+local function predictPos(target)
+local rootPart = target:FindFirstChild("HumanoidRootPart")
+local head = target:FindFirstChild("Head")
+if not rootPart or not head then
+return head and head.Position or rootPart and rootPart.Position
+end
+local velocity = rootPart.Velocity
+local predictionTime = 0.02
+local basePosition = rootPart.Position + velocity * predictionTime
+local headOffset = head.Position - rootPart.Position
+return basePosition + headOffset
+end
+
+local function getTarget()
+local nearest = nil
+local minDistance = math.huge
+local viewportCenter = Cam.ViewportSize / 2
+raycastParams.FilterDescendantsInstances = {Player.Character}
+for _, npc in ipairs(validNPCs) do
+local predictedPos = predictPos(npc)
+local screenPos, visible = Cam:WorldToViewportPoint(predictedPos)
+if visible and screenPos.Z > 0 then
+local ray = workspace:Raycast(
+Cam.CFrame.Position,
+(predictedPos - Cam.CFrame.Position).Unit * 1000,
+raycastParams
+)
+if ray and ray.Instance:IsDescendantOf(npc) then
+local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
+if distance < minDistance and distance < fov then
+minDistance = distance
+nearest = npc
+end
+end
+end
+end
+return nearest
+end
+
+local function aim(targetPosition)
+local currentCF = Cam.CFrame
+local targetDirection = (targetPosition - currentCF.Position).Unit
+local smoothFactor = 0.581
+local newLookVector = currentCF.LookVector:Lerp(targetDirection, smoothFactor)
+Cam.CFrame = CFrame.new(currentCF.Position, currentCF.Position + newLookVector)
+end
+
+local lastUpdate = 0
+local UPDATE_INTERVAL = 0.4
+
+RunService.Heartbeat:Connect(function(dt)
+updateDrawings()
+lastUpdate = lastUpdate + dt
+if lastUpdate >= UPDATE_INTERVAL then
+updateNPCs()
+lastUpdate = 0
+end
+if isAiming then
+local target = getTarget()
+if target then
+local predictedPosition = predictPos(target)
+aim(predictedPosition)
+end
+end
+end)
+
+Tab3:AddToggle({
+Name = "Aimbot",
+Default = false,
+Callback = function(Value)
+isAiming = Value
+FOVring.Visible = Value
+end
+})
+
+Tab3:AddSlider({
+Name = "Aimbot FOV",
+Min = 10,
+Max = 500,
+Default = 100,
+Increment = 10,
+Callback = function(Value)
+fov = Value
+end
+})
+
+Players.PlayerRemoving:Connect(function()
+FOVring:Remove()
+end)
+
+-- MISC Tab
+local Tab4 = Window:MakeTab({"MISC", ""})
+
+Tab4:AddButton({
+Name = "Teleport to end (80 KM)",
+Callback = function()
+local player = game.Players.LocalPlayer
+wait(1)
+player.Character:PivotTo(CFrame.new(-346, -69, -49060))
+end
+})
+
+Tab4:AddToggle({
+Name = "Auto Collect Money Bag",
+Default = false,
+Callback = function(Value)
+autoCollect = Value
+end
+})
+
+Tab4:AddToggle({
+Name = "Auto Heal",
+Default = false,
+Callback = function(Value)
+autoHeal = Value
+end
+})
+
+Tab4:AddSlider({
+Name = "Auto Heal At",
+Min = 1,
+Max = 100,
+Default = 40,
+Increment = 1,
+Callback = function(Value)
+healThreshold = Value
+end
+})
+
+Tab4:AddButton({
+Name = "No Lag / Fps Boost",
+Callback = function()
+loadstring(game:HttpGet("https://pastefy.app/t5h3u9L3/raw"))()
+end
+})
+
+Tab4:AddButton({
+Name = "ForceField (Not Fe)",
+Callback = function()
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local forceField = Instance.new("ForceField")
+forceField.Parent = character
+end
+})
+
+Tab4:AddButton({
+Name = "Infinite Money And Bonds And Robux Click Now ðŸ¤‘ðŸ¤‘ðŸ‘‡",
+Callback = function()
+local StarterGui = game:GetService("StarterGui")
+StarterGui:SetCore("SendNotification", {
+Title = "ðŸ˜ˆðŸ˜ˆ",
+Text = "God Is Coming ðŸ˜ˆ",
+Duration = 27
+})
+
+local screenGui = Instance.new("ScreenGui")  
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")  
+
+local whiteScreen = Instance.new("Frame")  
+whiteScreen.Parent = screenGui  
+whiteScreen.Size = UDim2.new(1, 0, 1, 0)  
+whiteScreen.Position = UDim2.new(0, 0, 0, 0)  
+whiteScreen.BackgroundColor3 = Color3.new(1, 1, 1)  
+whiteScreen.BorderSizePixel = 0   
+
+wait(2)  
+whiteScreen:Destroy()  
+
+local textLabel = Instance.new("TextLabel")  
+textLabel.Parent = screenGui  
+textLabel.Size = UDim2.new(1, 0, 0.1, 0)   
+textLabel.Position = UDim2.new(0, 0, 0, 0)   
+textLabel.Text = "God Is Coming"  
+textLabel.Font = Enum.Font.Code  
+textLabel.TextSize = 50  
+textLabel.TextColor3 = Color3.new(1, 0, 0)   
+textLabel.BackgroundTransparency = 1   
+textLabel.TextStrokeTransparency = 0   
+textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)   
+textLabel.TextYAlignment = Enum.TextYAlignment.Top   
+
+local function countdown()  
+  local count = 30  
+  while count > 0 do  
+    textLabel.Text = "God Is Coming - " .. count  
+    if count <= 3 then wait(2) else wait(1) end  
+    count = count - 1  
+  end  
+  textLabel.Text = "God Is Coming"  
+  wait(5)  
+  textLabel:Destroy()  
+end  
+
+countdown()
+
+end
+})
+
+Tab4:AddButton({
+Name = "Copy Discord Link (Put it in Google)",
+Callback = function()
+setclipboard("https://discord.gg/dNSZbQw2F2")
+end
+})
+
+-- Auto functions
+RunService.RenderStepped:Connect(function()
+-- Auto bandage
+if nobandagedelay and LocalPlayer.PlayerGui.BandageUse.Enabled and LocalPlayer.Character then
+local Bandage = LocalPlayer.Character:FindFirstChild("Bandage")
+if Bandage ~= nil then
+Bandage.Use:FireServer()
+end
+end
+
+-- Auto collect money  
+if autoCollect then  
+    for _, moneyBag in ipairs(workspace.RuntimeItems:GetChildren()) do  
+        if moneyBag:IsA("Model") then  
+            local prompt = moneyBag:FindFirstChild("CollectPrompt", true)  
+            if prompt and prompt:IsA("ProximityPrompt") then  
+                prompt.HoldDuration = 0  
+                prompt:InputHoldBegin()  
+                wait(0.05)  
+                prompt:InputHoldEnd()  
+            end  
+        end  
+    end  
+end  
+  
+-- Auto heal  
+if autoHeal then  
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")  
+    if humanoid and humanoid.Health < healThreshold then  
+        local bandage = LocalPlayer.Backpack:FindFirstChild("Bandage")  
+        if bandage then  
+            bandage.Use:FireServer()  
+        end  
+    end  
+end
+
+end)
+
+-- Instant purchase
+local function instantPurchase()
+for _, obj in pairs(workspace:GetDescendants()) do
+if obj:IsA("ProximityPrompt") then
+obj.HoldDuration = 0
+end
+end
+end
+
+game:GetService("RunService").RenderStepped:Connect(instantPurchase)
+
+-- Op Mods Tab
+local Tab5 = Window:MakeTab({"Op Mods", ""})
+
+Tab5:AddButton({
+Name = "Delete Tool (Advanced)",
+Callback = function()
+    local player = game:GetService("Players").LocalPlayer
+    local playerGui = player:FindFirstChild("PlayerGui")
+
+    if not playerGui then
+        warn("PlayerGui not found!")
+        return
+    end
+
+    -- Create GUI screen
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = playerGui
+
+    -- Create invisible target circle
+    local targetCircle = Instance.new("Frame")
+    targetCircle.Size = UDim2.new(0, 2, 0, 2) -- Circle size (2x2)
+    targetCircle.Position = UDim2.new(0.5, -1, 0.5, -1) -- Center of screen
+    targetCircle.BackgroundTransparency = 1 -- Invisible
+    targetCircle.Parent = screenGui
+
+    -- Create button frame
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Size = UDim2.new(0, 120, 0, 110) -- Frame containing buttons
+    buttonFrame.Position = UDim2.new(0.75, 0, 0.45, 0) -- Right side of screen
+    buttonFrame.BackgroundTransparency = 1
+    buttonFrame.Parent = screenGui
+
+    -- Create Delete button
+    local deleteButton = Instance.new("TextButton")
+    deleteButton.Size = UDim2.new(0, 100, 0, 40)
+    deleteButton.Position = UDim2.new(0, 10, 0, 0)
+    deleteButton.BackgroundColor3 = Color3.new(1, 0, 0)
+    deleteButton.TextColor3 = Color3.new(1, 1, 1)
+    deleteButton.Text = "Delete"
+    deleteButton.Parent = buttonFrame
+
+    -- Create Undo button
+    local undoButton = Instance.new("TextButton")
+    undoButton.Size = UDim2.new(0, 100, 0, 40)
+    undoButton.Position = UDim2.new(0, 10, 0, 50)
+    undoButton.BackgroundColor3 = Color3.new(0, 0, 1) -- Blue color
+    undoButton.TextColor3 = Color3.new(1, 1, 1)
+    undoButton.Text = "Undo"
+    undoButton.Parent = buttonFrame
+
+    -- Create Show/Hide button (top right)
+    local destroyButton = Instance.new("TextButton")
+    destroyButton.Size = UDim2.new(0, 80, 0, 30)
+    destroyButton.Position = UDim2.new(0.9, 0, 0, 0)
+    destroyButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    destroyButton.TextColor3 = Color3.new(1, 1, 1)
+    destroyButton.Text = "Show/Hide"
+    destroyButton.Parent = screenGui
+
+    -- Store deleted objects
+    local deletedObjects = {}
+
+    -- Function to delete object in front of crosshair
+    local function deleteObjectInFront()
+        local camera = workspace.CurrentCamera
+        local origin = camera.CFrame.Position
+        local direction = camera.CFrame.LookVector * 100 -- Detection range
+
+        local raycastParams = RaycastParams.new()  
+        raycastParams.FilterDescendantsInstances = {player.Character} -- Ignore player
+        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist  
+
+        local result = workspace:Raycast(origin, direction, raycastParams)  
+
+        if result and result.Instance then  
+            table.insert(deletedObjects, {instance = result.Instance, parent = result.Instance.Parent}) -- Save object
+            result.Instance.Parent = nil -- "Delete" it
+        end
+    end
+
+    -- Function to undo last deletion
+    local function undoDelete()
+        if #deletedObjects > 0 then
+            local lastDeleted = table.remove(deletedObjects) -- Get last deleted object
+            lastDeleted.instance.Parent = lastDeleted.parent -- Restore it
+        end
+    end
+
+    -- Function to hide buttons
+    local function hideButtons()
+        buttonFrame.Visible = not buttonFrame.Visible
+    end
+
+    -- Connect buttons to functions
+    deleteButton.MouseButton1Click:Connect(deleteObjectInFront)
+    undoButton.MouseButton1Click:Connect(undoDelete)
+    destroyButton.MouseButton1Click:Connect(hideButtons)
+end
+})
+
+
+-- في تبويب Op Mods (Tab5)، أضف هذا الجزء:
+Tab5:AddSection({"Double Jump"})
+
+Tab5:AddToggle({
+    Name = "Double Jump",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            -- تهيئة المتغيرات
+            local player = game.Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+            
+            local maxAirJumps = 2  -- عدد القفزات الإضافية المسموحة
+            local airJumpsLeft = maxAirJumps
+            local userInputService = game:GetService("UserInputService")
+            local canJump = true
+            
+            -- وظيفة التعامل مع القفزات
+            local function onJumpRequest()
+                if humanoid:GetState() == Enum.HumanoidStateType.Freefall and airJumpsLeft > 0 and canJump then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    airJumpsLeft = airJumpsLeft - 1
+                    canJump = false
+                    
+                    -- تأثير بسيط للقفزة الإضافية
+                    if character:FindFirstChild("HumanoidRootPart") then
+                        local effect = Instance.new("ParticleEmitter")
+                        effect.LightEmission = 1
+                        effect.Texture = "rbxassetid://243098098"
+                        effect.Size = NumberSequence.new(0.5)
+                        effect.Parent = character.HumanoidRootPart
+                        game.Debris:AddItem(effect, 0.5)
+                    end
+                end
+            end
+            
+            -- إعادة تعيين القفزات عند الهبوط
+            local function onStateChanged(_, newState)
+                if newState == Enum.HumanoidStateType.Landed or newState == Enum.HumanoidStateType.Running then
+                    airJumpsLeft = maxAirJumps
+                end
+            end
+            
+            -- إعادة تعيين زر القفز
+            local function onInputEnded(input, gameProcessedEvent)
+                if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+          canJump = true
+                end
+            end
+            
+            -- توصيل الأحداث
+            userInputService.JumpRequest:Connect(onJumpRequest)
+            userInputService.InputEnded:Connect(onInputEnded)
+            humanoid.StateChanged:Connect(onStateChanged)
+            
+            -- إعادة التعيين عند تغيير الشخصية
+            player.CharacterAdded:Connect(function(newCharacter)
+                character = newCharacter
+                humanoid = character:WaitForChild("Humanoid")
+                airJumpsLeft = maxAirJumps
+                canJump = true
+                
+                -- إعادة توصيل الأحداث للشخصية الجديدة
+                humanoid.StateChanged:Connect(onStateChanged)
+            end)
+            
+            print("تم تفعيل Double Jump بنجاح!")
+        else
+            -- إيقاف النظام عند تعطيل التوجل
+            local userInputService = game:GetService("UserInputService")
+            
+            -- فصل جميع الأحداث المتصلة (هذا جزء مبسط، في الواقع تحتاج لحفظ المرجع لفصله)
+            for _, conn in pairs(getconnections(userInputService.JumpRequest)) do
+                conn:Disconnect()
+            end
+            
+            print("تم إيقاف Double Jump")
+        end
+    end
+})
+
+Tab5:AddSlider({
+    Name = "Jumps ( It must be 2 )",
+    Min = 1,
+    Max = 5,
+    Default = 2,
+    Increment = 1,
+    Callback = function(Value)
+        maxAirJumps = Value
+    end
+})
+
+
+Tab5:AddSection({"NPC Lock"})
+
+Tab5:AddButton({
+    Name = "NPC Lock (Op)",
+    Callback = function()
+        -- إنشاء واجهة المستخدم الجديدة
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "NPC_Lock_GUI"
+        screenGui.Parent = game:GetService("CoreGui")
+
+        -- إنشاء الزر الجديد حسب المواصفات المطلوبة
+        local button = Instance.new("TextButton")
+        button.Name = "AimbotToggle"
+        button.Size = UDim2.new(0, 60, 0, 40)
+        button.Position = UDim2.new(1, -70, 0.5, -20) -- التعديل هنا لوضعه في أقصى اليمين
+        button.AnchorPoint = Vector2.new(1, 0.5) -- إضافة نقطة الارتساء
+        button.BackgroundColor3 = Color3.new(1, 1, 1)
+        button.TextColor3 = Color3.new(0, 0, 0)
+        button.Text = "OFF"
+        button.Font = Enum.Font.SourceSansBold
+        button.TextSize = 16
+        button.Parent = screenGui
+
+        -- إضافة حواف حمراء
+        local uiStroke = Instance.new("UIStroke")
+        uiStroke.Color = Color3.new(1, 0, 0)
+        uiStroke.Thickness = 2
+        uiStroke.Parent = button
+
+        -- زوايا مستديرة
+        local uicorner = Instance.new("UICorner")
+        uicorner.CornerRadius = UDim.new(0, 8)
+        uicorner.Parent = button
+
+        -- متغيرات النظام
+        local npcLock = false
+        local lastTarget = nil
+        local toggleLoop
+
+        -- وظيفة لجلب أقرب NPC
+        local function getClosestNPC()
+            local closestNPC = nil
+            local closestDistance = math.huge
+
+            for _, object in ipairs(workspace:GetDescendants()) do
+                if object:IsA("Model") then
+                    local humanoid = object:FindFirstChild("Humanoid") or object:FindFirstChildWhichIsA("Humanoid")
+                    local hrp = object:FindFirstChild("HumanoidRootPart") or object.PrimaryPart
+                    if humanoid and hrp and humanoid.Health > 0 and object.Name ~= "Horse" then
+                        local isPlayer = false
+                        for _, pl in ipairs(Players:GetPlayers()) do
+                            if pl.Character == object then
+                                isPlayer = true
+                                break
+                            end
+                        end
+                        if not isPlayer then
+                            local distance = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                            if distance < closestDistance then
+                                closestDistance = distance
+                                closestNPC = object
+                            end
+                        end
+                    end
+                end
+            end
+
+            return closestNPC
+        end
+
+        -- وظيفة تغيير وضع الكاميرا
+        local function setCameraMode(thirdPerson)
+            if thirdPerson then
+                player.CameraMode = Enum.CameraMode.Classic
+                player.CameraMaxZoomDistance = 17
+                player.CameraMinZoomDistance = 17
+            else
+                player.CameraMode = Enum.CameraMode.LockFirstPerson
+                player.CameraMaxZoomDistance = 0
+                player.CameraMinZoomDistance = 0
+            end
+        end
+
+        -- تفعيل/إلغاء تفعيل النظام
+        button.MouseButton1Click:Connect(function()
+            npcLock = not npcLock
+            
+            if npcLock then
+                -- وضع التشغيل (ON)
+                button.Text = "ON"
+                button.TextColor3 = Color3.new(0, 1, 0)
+                uiStroke.Color = Color3.new(0, 1, 0)
+                
+                setCameraMode(true)
+                
+                toggleLoop = runService.RenderStepped:Connect(function()
+                    local npc = getClosestNPC()
+                    if npc and npc:FindFirstChild("Humanoid") then
+                        local npcHumanoid = npc:FindFirstChild("Humanoid")
+                        if npcHumanoid.Health > 0 then
+                            camera.CameraSubject = npcHumanoid
+                            lastTarget = npc
+                        else
+                            lastTarget = nil
+                            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                                camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+                            end
+                        end
+                    else
+                        if player.Character and player.Character:FindFirstChild("Humanoid") then
+                            camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+                        end
+                        lastTarget = nil
+                    end
+                end)
+            else
+                -- وضع الإيقاف (OFF)
+                button.Text = "OFF"
+                button.TextColor3 = Color3.new(1, 0, 0)
+                uiStroke.Color = Color3.new(1, 0, 0)
+                
+                setCameraMode(false)
+                
+                if toggleLoop then
+                    toggleLoop:Disconnect()
+                    toggleLoop = nil
+                end
+                
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+                end
+            end
+        end)
+
+        -- إعادة التعيين عند موت اللاعب
+        player.CharacterAdded:Connect(function(character)
+            character:WaitForChild("Humanoid")
+            if npcLock then
+                setCameraMode(true)
+            else
+                setCameraMode(false)
+            end
+        end)
+
+        StarterGui:SetCore("SendNotification", {
+            Title = "NPC Lock Activated",
+            Text = "NPC Lock By Supra 🤪🤪🤪",
+            Duration = 5
+        })
+    end
+})
