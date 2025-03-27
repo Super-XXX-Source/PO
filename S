@@ -773,149 +773,157 @@ Tab5:AddSection({"NPC Lock"})
 Tab5:AddButton({
     Name = "NPC Lock (Op)",
     Callback = function()
-        -- إنشاء واجهة المستخدم الجديدة
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "NPC_Lock_GUI"
-        screenGui.Parent = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local runService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local camera = workspace.CurrentCamera
 
-        -- إنشاء الزر الجديد حسب المواصفات المطلوبة
-        local button = Instance.new("TextButton")
-        button.Name = "AimbotToggle"
-        button.Size = UDim2.new(0, 60, 0, 40)
-        button.Position = UDim2.new(1, -70, 0.5, -20) -- التعديل هنا لوضعه في أقصى اليمين
-        button.AnchorPoint = Vector2.new(1, 0.5) -- إضافة نقطة الارتساء
-        button.BackgroundColor3 = Color3.new(1, 1, 1)
-        button.TextColor3 = Color3.new(0, 0, 0)
-        button.Text = "OFF"
-        button.Font = Enum.Font.SourceSansBold
-        button.TextSize = 16
-        button.Parent = screenGui
+-- إنشاء واجهة المستخدم الجديدة
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NPC_Lock_GUI"
+screenGui.Parent = game:GetService("CoreGui")
 
-        -- إضافة حواف حمراء
-        local uiStroke = Instance.new("UIStroke")
-        uiStroke.Color = Color3.new(1, 0, 0)
-        uiStroke.Thickness = 2
-        uiStroke.Parent = button
+-- إنشاء الزر الجديد حسب المواصفات المطلوبة
+local button = Instance.new("TextButton")
+button.Name = "AimbotToggle"
+button.Size = UDim2.new(0, 60, 0, 40)
+button.Position = UDim2.new(1, -70, 0.5, -20) -- التعديل هنا لوضعه في أقصى اليمين
+button.AnchorPoint = Vector2.new(1, 0.5) -- إضافة نقطة الارتساء
+button.BackgroundColor3 = Color3.new(1, 1, 1)
+button.TextColor3 = Color3.new(0, 0, 0)
+button.Text = "OFF"
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 16
+button.Parent = screenGui
 
-        -- زوايا مستديرة
-        local uicorner = Instance.new("UICorner")
-        uicorner.CornerRadius = UDim.new(0, 8)
-        uicorner.Parent = button
+-- إضافة حواف حمراء
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = Color3.new(1, 0, 0)
+uiStroke.Thickness = 2
+uiStroke.Parent = button
 
-        -- متغيرات النظام
-        local npcLock = false
-        local lastTarget = nil
-        local toggleLoop
+-- زوايا مستديرة
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 8)
+uicorner.Parent = button
 
-        -- وظيفة لجلب أقرب NPC
-        local function getClosestNPC()
-            local closestNPC = nil
-            local closestDistance = math.huge
 
-            for _, object in ipairs(workspace:GetDescendants()) do
-                if object:IsA("Model") then
-                    local humanoid = object:FindFirstChild("Humanoid") or object:FindFirstChildWhichIsA("Humanoid")
-                    local hrp = object:FindFirstChild("HumanoidRootPart") or object.PrimaryPart
-                    if humanoid and hrp and humanoid.Health > 0 and object.Name ~= "Horse" then
-                        local isPlayer = false
-                        for _, pl in ipairs(Players:GetPlayers()) do
-                            if pl.Character == object then
-                                isPlayer = true
-                                break
-                            end
-                        end
-                        if not isPlayer then
-                            local distance = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                            if distance < closestDistance then
-                                closestDistance = distance
-                                closestNPC = object
-                            end
-                        end
+-- متغيرات النظام
+local npcLock = false
+local lastTarget = nil
+local toggleLoop
+
+-- وظيفة لجلب أقرب NPC
+local function getClosestNPC()
+    local closestNPC = nil
+    local closestDistance = math.huge
+
+    for _, object in ipairs(workspace:GetDescendants()) do
+        if object:IsA("Model") then
+            local humanoid = object:FindFirstChild("Humanoid") or object:FindFirstChildWhichIsA("Humanoid")
+            local hrp = object:FindFirstChild("HumanoidRootPart") or object.PrimaryPart
+            if humanoid and hrp and humanoid.Health > 0 and object.Name ~= "Horse" then
+                local isPlayer = false
+                for _, pl in ipairs(Players:GetPlayers()) do
+                    if pl.Character == object then
+                        isPlayer = true
+                        break
+                    end
+                end
+                if not isPlayer then
+                    local distance = (hrp.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestNPC = object
                     end
                 end
             end
-
-            return closestNPC
         end
+    end
 
-        -- وظيفة تغيير وضع الكاميرا
-        local function setCameraMode(thirdPerson)
-            if thirdPerson then
-                player.CameraMode = Enum.CameraMode.Classic
-                player.CameraMaxZoomDistance = 17
-                player.CameraMinZoomDistance = 17
-            else
-                player.CameraMode = Enum.CameraMode.LockFirstPerson
-                player.CameraMaxZoomDistance = 0
-                player.CameraMinZoomDistance = 0
-            end
-        end
+    return closestNPC
+end
 
-        -- تفعيل/إلغاء تفعيل النظام
-        button.MouseButton1Click:Connect(function()
-            npcLock = not npcLock
-            
-            if npcLock then
-                -- وضع التشغيل (ON)
-                button.Text = "ON"
-                button.TextColor3 = Color3.new(0, 1, 0)
-                uiStroke.Color = Color3.new(0, 1, 0)
-                
-                setCameraMode(true)
-                
-                toggleLoop = runService.RenderStepped:Connect(function()
-                    local npc = getClosestNPC()
-                    if npc and npc:FindFirstChild("Humanoid") then
-                        local npcHumanoid = npc:FindFirstChild("Humanoid")
-                        if npcHumanoid.Health > 0 then
-                            camera.CameraSubject = npcHumanoid
-                            lastTarget = npc
-                        else
-                            lastTarget = nil
-                            if player.Character and player.Character:FindFirstChild("Humanoid") then
-                                camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
-                            end
-                        end
-                    else
-                        if player.Character and player.Character:FindFirstChild("Humanoid") then
-                            camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
-                        end
-                        lastTarget = nil
+-- وظيفة تغيير وضع الكاميرا
+local function setCameraMode(thirdPerson)
+    if thirdPerson then
+        player.CameraMode = Enum.CameraMode.Classic
+        player.CameraMaxZoomDistance = 17 -- تعيين الزوم إلى 100
+        player.CameraMinZoomDistance = 17 -- لجعل الزوم ثابتًا عند 100
+    else
+        player.CameraMode = Enum.CameraMode.LockFirstPerson
+        -- إعادة ضبط إعدادات الزوم الافتراضية عند الإيقاف
+        player.CameraMaxZoomDistance = 0
+        player.CameraMinZoomDistance = 0
+    end
+end
+
+-- تفعيل/إلغاء تفعيل النظام
+button.MouseButton1Click:Connect(function()
+    npcLock = not npcLock
+    
+    if npcLock then
+        -- وضع التشغيل (ON)
+        button.Text = "ON"
+        button.TextColor3 = Color3.new(0, 1, 0) -- نص أخضر
+        uiStroke.Color = Color3.new(0, 1, 0) -- حافة خضراء
+        
+        setCameraMode(true) -- تفعيل منظور الشخص الثالث والزوم 100
+        
+        toggleLoop = runService.RenderStepped:Connect(function()
+            local npc = getClosestNPC()
+            if npc and npc:FindFirstChild("Humanoid") then
+                local npcHumanoid = npc:FindFirstChild("Humanoid")
+                if npcHumanoid.Health > 0 then
+                    camera.CameraSubject = npcHumanoid
+                    lastTarget = npc
+                else
+                    lastTarget = nil
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
                     end
-                end)
-            else
-                -- وضع الإيقاف (OFF)
-                button.Text = "OFF"
-                button.TextColor3 = Color3.new(1, 0, 0)
-                uiStroke.Color = Color3.new(1, 0, 0)
-                
-                setCameraMode(false)
-                
-                if toggleLoop then
-                    toggleLoop:Disconnect()
-                    toggleLoop = nil
                 end
-                
+            else
                 if player.Character and player.Character:FindFirstChild("Humanoid") then
                     camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
                 end
+                lastTarget = nil
             end
         end)
+    else
+        -- وضع الإيقاف (OFF)
+        button.Text = "OFF"
+        button.TextColor3 = Color3.new(1, 0, 0) -- نص أحمر
+        uiStroke.Color = Color3.new(1, 0, 0) -- حافة حمراء
+        
+        setCameraMode(false) -- إعادة منظور الشخص الأول
+        
+        if toggleLoop then
+            toggleLoop:Disconnect()
+            toggleLoop = nil
+        end
+        
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            camera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+        end
+    end
+end)
 
-        -- إعادة التعيين عند موت اللاعب
-        player.CharacterAdded:Connect(function(character)
-            character:WaitForChild("Humanoid")
-            if npcLock then
-                setCameraMode(true)
-            else
-                setCameraMode(false)
-            end
-        end)
+-- إعادة التعيين عند موت اللاعب
+player.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    if npcLock then
+        setCameraMode(true)
+    else
+        setCameraMode(false)
+    end
+end)
 
-        StarterGui:SetCore("SendNotification", {
-            Title = "NPC Lock Activated",
-            Text = "NPC Lock By Supra 🤪🤪🤪",
-            Duration = 5
-        })
+StarterGui:SetCore("SendNotification", {
+    Title = "Npc Lock By Supra",
+    Text = "Click the Button To Toggle ",
+    Duration = 5
+})
     end
 })
