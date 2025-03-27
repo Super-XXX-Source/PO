@@ -411,14 +411,7 @@ end)
 -- MISC Tab
 local Tab4 = Window:MakeTab({"MISC", ""})
 
-Tab4:AddButton({
-Name = "Teleport to end (80 KM)",
-Callback = function()
-local player = game.Players.LocalPlayer
-wait(1)
-player.Character:PivotTo(CFrame.new(-346, -69, -49060))
-end
-})
+
 
 Tab4:AddToggle({
 Name = "Auto Collect Money Bag",
@@ -454,75 +447,51 @@ loadstring(game:HttpGet("https://pastefy.app/t5h3u9L3/raw"))()
 end
 })
 
-Tab4:AddButton({
-Name = "ForceField (Not Fe)",
-Callback = function()
-local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local forceField = Instance.new("ForceField")
-forceField.Parent = character
-end
+Tab4:AddSection({"Items Control"})
+
+-- Auto Store Toggle
+Tab4:AddToggle({
+    Name = "Auto Store Items",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            coroutine.wrap(function()
+                local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                local hrp = character:WaitForChild("HumanoidRootPart")
+                local runtimeItems = workspace:WaitForChild("RuntimeItems")
+                local storeRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("StoreItem")
+                
+                while Value and task.wait(0.1) do
+                    for _, item in pairs(runtimeItems:GetChildren()) do
+                        if item:IsA("BasePart") or (item:IsA("Model") and item.PrimaryPart) then
+                            local pos = item:IsA("Model") and item.PrimaryPart.Position or item.Position
+                            if (hrp.Position - pos).Magnitude <= 30 then
+                                storeRemote:FireServer(item)
+                            end
+                        end
+                    end
+                end
+            end)()
+        end
+    end
 })
 
-Tab4:AddButton({
-Name = "Infinite Money And Bonds And Robux Click Now ðŸ¤‘ðŸ¤‘ðŸ‘‡",
-Callback = function()
-local StarterGui = game:GetService("StarterGui")
-StarterGui:SetCore("SendNotification", {
-Title = "ðŸ˜ˆðŸ˜ˆ",
-Text = "God Is Coming ðŸ˜ˆ",
-Duration = 27
+-- Auto Drop Toggle
+Tab4:AddToggle({
+    Name = "Auto Drop Items",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            coroutine.wrap(function()
+                local dropRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DropItem")
+                while Value and task.wait(0.1) do
+                    dropRemote:FireServer()
+                end
+            end)()
+        end
+    end
 })
 
-local screenGui = Instance.new("ScreenGui")  
-screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")  
-
-local whiteScreen = Instance.new("Frame")  
-whiteScreen.Parent = screenGui  
-whiteScreen.Size = UDim2.new(1, 0, 1, 0)  
-whiteScreen.Position = UDim2.new(0, 0, 0, 0)  
-whiteScreen.BackgroundColor3 = Color3.new(1, 1, 1)  
-whiteScreen.BorderSizePixel = 0   
-
-wait(2)  
-whiteScreen:Destroy()  
-
-local textLabel = Instance.new("TextLabel")  
-textLabel.Parent = screenGui  
-textLabel.Size = UDim2.new(1, 0, 0.1, 0)   
-textLabel.Position = UDim2.new(0, 0, 0, 0)   
-textLabel.Text = "God Is Coming"  
-textLabel.Font = Enum.Font.Code  
-textLabel.TextSize = 50  
-textLabel.TextColor3 = Color3.new(1, 0, 0)   
-textLabel.BackgroundTransparency = 1   
-textLabel.TextStrokeTransparency = 0   
-textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)   
-textLabel.TextYAlignment = Enum.TextYAlignment.Top   
-
-local function countdown()  
-  local count = 30  
-  while count > 0 do  
-    textLabel.Text = "God Is Coming - " .. count  
-    if count <= 3 then wait(2) else wait(1) end  
-    count = count - 1  
-  end  
-  textLabel.Text = "God Is Coming"  
-  wait(5)  
-  textLabel:Destroy()  
-end  
-
-countdown()
-
-end
-})
-
-Tab4:AddButton({
-Name = "Copy Discord Link (Put it in Google)",
-Callback = function()
-setclipboard("https://discord.gg/dNSZbQw2F2")
-end
-})
 
 -- Auto functions
 RunService.RenderStepped:Connect(function()
@@ -927,3 +896,6 @@ StarterGui:SetCore("SendNotification", {
 })
     end
 })
+
+
+Tab5:AddSection({"Idk what to add"})
